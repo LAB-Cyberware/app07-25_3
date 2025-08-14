@@ -1,21 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
+  }
 
-export async function POST(request) {
   try {
-    const { imageUrl, imageBase64, prompt } = await request.json();
-    
+    const { imageUrl, imageBase64, prompt } = req.body;
+
     if (!prompt) {
-      return NextResponse.json(
-        { error: 'Prompt es requerido' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Prompt es requerido' });
     }
 
     if (!imageUrl && !imageBase64) {
-      return NextResponse.json(
-        { error: 'Se requiere imageUrl o imageBase64' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Se requiere imageUrl o imageBase64' });
     }
 
     let inputImageBase64 = imageBase64;
@@ -28,13 +24,10 @@ export async function POST(request) {
     const geminiResponse = await callGeminiImageAPI(inputImageBase64, enhancedPrompt);
     
     if (!geminiResponse.success) {
-      return NextResponse.json(
-        { error: 'Error al generar imagen con Gemini' },
-        { status: 500 }
-      );
+      return res.status(500).json({ error: 'Error al generar imagen con Gemini' });
     }
 
-    return NextResponse.json({
+    return res.status(200).json({
       success: true,
       generatedImage: geminiResponse.imageBase64,
       originalPrompt: prompt,
@@ -43,10 +36,7 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error en API de Gemini:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    return res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
   }
 }
 
@@ -145,13 +135,6 @@ async function generateImageWithDescription(description, originalImageBase64) {
   
   console.log('Generando imagen con descripción:', description);
   console.log('Imagen original recibida:', originalImageBase64 ? 'Sí' : 'No');
-  
-  return originalImageBase64;
-}
 
-export async function GET() {
-  return NextResponse.json(
-    { error: 'Método no permitido' },
-    { status: 405 }
-  );
+  return originalImageBase64;
 }
