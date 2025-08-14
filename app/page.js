@@ -1,4 +1,4 @@
-import ImageGenerator from './ImageGenerator';
+import ImageGenerator from './ImageGenerator.js';
 
 export default function TestApiPage() {
   return (
