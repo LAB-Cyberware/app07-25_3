@@ -10,8 +10,11 @@ export default function TestGeminiPage() {
   const testAPI = async () => {
     setTesting(true);
     setTestResult('Probando API...');
+    
+    console.log('🚀 Iniciando prueba de API...');
 
     try {
+      console.log('📤 Enviando request...');
       const response = await fetch('/api/gemini/img', {
         method: 'POST',
         headers: {
@@ -23,17 +26,32 @@ export default function TestGeminiPage() {
         })
       });
 
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const result = await response.json();
+      console.log('✅ Result received:', result);
       
       if (result.success) {
         setTestResult(`✅ API funcionando correctamente
 Prompt original: ${result.originalPrompt}
-Prompt mejorado: ${result.enhancedPrompt}`);
+Prompt mejorado: ${result.enhancedPrompt}
+Descripción: ${result.description || 'N/A'}`);
       } else {
-        setTestResult(`❌ Error: ${result.error}`);
+        const errorMsg = result.error || result.message || 'Error desconocido en resultado';
+        console.error('❌ API error:', errorMsg);
+        setTestResult(`❌ Error de API: ${errorMsg}`);
       }
     } catch (error) {
-      setTestResult(`❌ Error de conexión: ${error.message}`);
+      console.error('💥 Catch error:', error);
+      const errorMsg = error.message || error.toString() || 'Error de conexión';
+      setTestResult(`❌ Error de conexión: ${errorMsg}`);
     } finally {
       setTesting(false);
     }
@@ -70,15 +88,6 @@ Prompt mejorado: ${result.enhancedPrompt}`);
               <pre className="whitespace-pre-wrap text-sm">{testResult}</pre>
             </div>
           )}
-
-          <div className="mt-6 text-sm text-gray-600">
-            <h3 className="font-semibold mb-2">Instrucciones:</h3>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Asegúrate de tener <code className="bg-gray-200 px-1 rounded">GEMINI_API_KEY</code> en tu <code className="bg-gray-200 px-1 rounded">.env.local</code></li>
-              <li>El archivo de la API debe estar en: <code className="bg-gray-200 px-1 rounded">pages/api/gemini/img.js</code></li>
-              <li>El componente debe estar en: <code className="bg-gray-200 px-1 rounded">components/ImageGenerator.js</code></li>
-            </ol>
-          </div>
         </div>
       </div>
     </div>

@@ -49,16 +49,29 @@ export default function ImageGenerator() {
         body: JSON.stringify(requestBody)
       });
 
+      // Verificar si la respuesta es exitosa
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response not ok:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const result = await response.json();
+      console.log('✅ Respuesta recibida:', result);
 
       if (result.success) {
         setGeneratedImage(result.generatedImage);
+        console.log('🖼️ Imagen generada exitosamente');
       } else {
-        setError(result.error || 'Error desconocido');
+        const errorMsg = result.error || result.message || 'Error desconocido';
+        console.error('❌ Error en resultado:', errorMsg);
+        setError(errorMsg);
       }
 
     } catch (err) {
-      setError(err.message);
+      console.error('💥 Error completo:', err);
+      const errorMessage = err.message || err.toString() || 'Error de conexión desconocido';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
