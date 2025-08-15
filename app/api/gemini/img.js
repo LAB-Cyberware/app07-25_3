@@ -1,153 +1,163 @@
-'use client'
+// pages/api/gemini/img.js
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
+  }
 
-import { useState } from 'react';
+  try {
+    // Obtener datos del request
+    const { imageUrl, imageBase64, prompt } = req.body;
+    
+    // Validar que tengamos los datos necesarios
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt es requerido' });
+    }
 
-export default function ImageGenerator() {
-  const [imageFile, setImageFile] = useState(null);
-  const [imageUrl, setImageUrl] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [generatedImage, setGeneratedImage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+    if (!imageUrl && !imageBase64) {
+      return res.status(400).json({ error: 'Se requiere imageUrl o imageBase64' });
+    }
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
+    // Convertir imagen a base64 si viene como URL
+    let inputImageBase64 = imageBase64;
+    if (imageUrl && !imageBase64) {
+      inputImageBase64 = await convertUrlToBase64(imageUrl);
+    }
+
+    // Preparar el prompt mejorado para incluir la miniatura
+    const enhancedPrompt = `${prompt}. Incluye una pequeña miniatura o referencia visual de la imagen proporcionada integrada naturalmente en la composición final.`;
+
+    // Llamar a la API de Gemini
+    const geminiResponse = await callGeminiImageAPI(inputImageBase64, enhancedPrompt);
+    
+    if (!geminiResponse.success) {
+      return res.status(500).json({ error: 'Error al generar imagen con Gemini' });
+    }
+
+    // Retornar la imagen generada en base64
+    return res.status(200).json({
+      success: true,
+      generatedImage: geminiResponse.imageBase64,
+      originalPrompt: prompt,
+      enhancedPrompt: enhancedPrompt
     });
-  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setGeneratedImage('');
+  } catch (error) {
+    console.error('Error en API de Gemini:', error);
+    return res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+  }
+}
 
-    try {
-      let requestBody = { prompt };
+// Función para convertir URL a base64
+async function convertUrlToBase64(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('No se pudo descargar la imagen');
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    return `data:${contentType};base64,${buffer.toString('base64')}`;
+  } catch (error) {
+    console.error('Error convirtiendo URL a base64:', error);
+    throw error;
+  }
+}
 
-      if (imageFile) {
-        const base64 = await fileToBase64(imageFile);
-        requestBody.imageBase64 = base64;
-      } else if (imageUrl) {
-        requestBody.imageUrl = imageUrl;
-      } else {
-        throw new Error('Debes proporcionar una imagen (archivo o URL)');
+// Función para llamar a la API de Gemini
+async function callGeminiImageAPI(imageBase64, prompt) {
+  try {
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY no configurada');
+    }
+
+    // Preparar la imagen para Gemini (remover el prefijo data:image/...)
+    const base64Data = imageBase64.includes(',') 
+      ? imageBase64.split(',')[1] 
+      : imageBase64;
+
+    // Configuración para la API de Gemini (Imagen + Texto)
+    const requestBody = {
+      contents: [{
+        parts: [
+          {
+            text: prompt
+          },
+          {
+            inline_data: {
+              mime_type: "image/jpeg", // Ajustar según el tipo de imagen
+              data: base64Data
+            }
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        topK: 32,
+        topP: 1,
+        maxOutputTokens: 4096,
       }
+    };
 
-      const response = await fetch('/api/gemini/img', {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`,
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody)
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setGeneratedImage(result.generatedImage);
-      } else {
-        setError(result.error || 'Error desconocido');
       }
+    );
 
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Error de Gemini API:', errorData);
+      throw new Error(`Error ${response.status}: ${errorData}`);
     }
-  };
 
-  return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold mb-6 text-center">
-        Generador de Imágenes con Gemini
-      </h2>
+    const data = await response.json();
+    
+    // Nota: Gemini Pro Vision genera texto, no imágenes directamente
+    // Para generación de imágenes necesitarías usar un servicio diferente
+    // como DALL-E, Midjourney, o Stable Diffusion
+    
+    // Simulación de respuesta (reemplazar con servicio real de generación)
+    const generatedImageBase64 = await generateImageWithDescription(
+      data.candidates[0]?.content?.parts[0]?.text || prompt,
+      imageBase64
+    );
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Subir imagen desde archivo:
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              setImageFile(e.target.files[0]);
-              setImageUrl('');
-            }}
-            className="w-full p-2 border border-gray-300 rounded-md"
-          />
-        </div>
+    return {
+      success: true,
+      imageBase64: generatedImageBase64,
+      description: data.candidates[0]?.content?.parts[0]?.text
+    };
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            O usar URL de imagen:
-          </label>
-          <input
-            type="url"
-            value={imageUrl}
-            onChange={(e) => {
-              setImageUrl(e.target.value);
-              setImageFile(null);
-            }}
-            placeholder="https://ejemplo.com/imagen.jpg"
-            className="w-full p-2 border border-gray-300 rounded-md"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Descripción para la nueva imagen:
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Ejemplo: Un paisaje futurista con ciudades flotantes"
-            rows={3}
-            className="w-full p-2 border border-gray-300 rounded-md"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading || !prompt}
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Generando...' : 'Generar Imagen'}
-        </button>
-      </form>
-
-      {error && (
-        <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          Error: {error}
-        </div>
-      )}
-
-      {generatedImage && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Imagen Generada:</h3>
-          <img
-            src={generatedImage}
-            alt="Imagen generada por IA"
-            className="w-full rounded-lg shadow-md"
-          />
-          <button
-            onClick={() => {
-              const link = document.createElement('a');
-              link.href = generatedImage;
-              link.download = 'imagen-generada.png';
-              link.click();
-            }}
-            className="mt-2 bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600"
-          >
-            Descargar Imagen
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  } catch (error) {
+    console.error('Error en llamada a Gemini:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
+
+// Función placeholder para generación de imágenes
+// Aquí integrarías un servicio real como DALL-E, Stable Diffusion, etc.
+async function generateImageWithDescription(description, originalImageBase64) {
+  // PLACEHOLDER: Aquí deberías integrar un servicio real de generación de imágenes
+  // Por ejemplo: OpenAI DALL-E, Stability AI, etc.
+  
+  console.log('Generando imagen con descripción:', description);
+  console.log('Imagen original recibida:', originalImageBase64 ? 'Sí' : 'No');
+  
+  // Por ahora retorna la imagen original (para testing)
+  return originalImageBase64;
+}
+
+// Solo permitir POST - Ya manejado arriba

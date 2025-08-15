@@ -1,5 +1,5 @@
-'use client'
-
+// pages/test-gemini.js
+'use client';
 import { useState } from 'react';
 import ImageGenerator from '../components/ImageGenerator';
 
@@ -46,8 +46,10 @@ Prompt mejorado: ${result.enhancedPrompt}`);
           Prueba de API Gemini + Generación de Imágenes
         </h1>
         
+        {/* Componente principal */}
         <ImageGenerator />
         
+        {/* Sección de prueba */}
         <div className="mt-12 max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
           <h2 className="text-xl font-bold mb-4">Prueba rápida de la API:</h2>
           
