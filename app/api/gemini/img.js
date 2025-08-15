@@ -1,8 +1,16 @@
 // pages/api/gemini/img.js
 export default async function handler(req, res) {
+  // Agregar headers CORS y JSON
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
   }
+
+  console.log('📝 Recibiendo request:', req.body); // Debug log
 
   try {
     // Obtener datos del request
@@ -10,40 +18,57 @@ export default async function handler(req, res) {
     
     // Validar que tengamos los datos necesarios
     if (!prompt) {
+      console.log('❌ Error: Prompt faltante');
       return res.status(400).json({ error: 'Prompt es requerido' });
     }
 
     if (!imageUrl && !imageBase64) {
+      console.log('❌ Error: Imagen faltante');
       return res.status(400).json({ error: 'Se requiere imageUrl o imageBase64' });
     }
+
+    console.log('✅ Datos validados correctamente');
+    console.log('📸 ImageUrl:', imageUrl ? 'Presente' : 'No');
+    console.log('📸 ImageBase64:', imageBase64 ? 'Presente' : 'No');
+    console.log('📝 Prompt:', prompt);
 
     // Convertir imagen a base64 si viene como URL
     let inputImageBase64 = imageBase64;
     if (imageUrl && !imageBase64) {
+      console.log('🔄 Convirtiendo URL a base64...');
       inputImageBase64 = await convertUrlToBase64(imageUrl);
+      console.log('✅ Conversión completada');
     }
 
     // Preparar el prompt mejorado para incluir la miniatura
     const enhancedPrompt = `${prompt}. Incluye una pequeña miniatura o referencia visual de la imagen proporcionada integrada naturalmente en la composición final.`;
 
+    console.log('🤖 Llamando a Gemini API...');
     // Llamar a la API de Gemini
     const geminiResponse = await callGeminiImageAPI(inputImageBase64, enhancedPrompt);
     
     if (!geminiResponse.success) {
-      return res.status(500).json({ error: 'Error al generar imagen con Gemini' });
+      console.log('❌ Error de Gemini:', geminiResponse.error);
+      return res.status(500).json({ error: 'Error al generar imagen con Gemini: ' + geminiResponse.error });
     }
 
+    console.log('✅ Respuesta exitosa de Gemini');
     // Retornar la imagen generada en base64
     return res.status(200).json({
       success: true,
       generatedImage: geminiResponse.imageBase64,
       originalPrompt: prompt,
-      enhancedPrompt: enhancedPrompt
+      enhancedPrompt: enhancedPrompt,
+      description: geminiResponse.description
     });
 
   } catch (error) {
-    console.error('Error en API de Gemini:', error);
-    return res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+    console.error('💥 Error en API de Gemini:', error);
+    console.error('Stack trace:', error.stack);
+    return res.status(500).json({ 
+      error: 'Error interno del servidor: ' + error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
 
