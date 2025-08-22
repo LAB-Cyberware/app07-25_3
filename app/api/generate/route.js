@@ -8,17 +8,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'El prompt es requerido' }, { status: 400 });
     }
 
-    const finalPrompt = `Genera una nueva imagen basada en esta descripción: ${prompt}
+const finalPrompt = `TAREA: Genera una imagen de: ${prompt}
 
-DESPUÉS, toma la imagen que te estoy enviando adjunta y úsala como watermark:
-- Colócala en la esquina superior derecha de la imagen que acabas de generar
-- Debe estar a 50 píxeles de distancia del borde superior y del borde derecho
-- Debe ser pequeña: 10% del tamaño total
-- No la modifiques, solo redimensiónala y ponla encima
-- Debe funcionar como un logo superpuesto
+- Genera una imagen de: ${prompt}
+- Resolución alta y calidad profesional
 
-Proceso: 1) Genera imagen principal de "${prompt}", 2) Superpón la imagen adjunta como logo pequeño en esquina superior derecha con 50px de margen desde los bordes.`;
-
+VERIFICACIÓN: La IMAGEN FINAL debe mostrar "${prompt}"`;
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ 
@@ -26,7 +21,7 @@ Proceso: 1) Genera imagen principal de "${prompt}", 2) Superpón la imagen adjun
       }, { status: 500 });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`;
 
     const contentParts = [
       { text: finalPrompt }
@@ -48,7 +43,7 @@ Proceso: 1) Genera imagen principal de "${prompt}", 2) Superpón la imagen adjun
         parts: contentParts
       }],
       generationConfig: {
-        responseModalities: ["TEXT", "IMAGE"]
+        responseModalities: ["TEXT", "IMAGE"],
       }
     };
 

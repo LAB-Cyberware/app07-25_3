@@ -21,8 +21,119 @@ export default function ImageGenerator() {
   const [inputImageBase64, setInputImageBase64] = useState(null);
   const [prompt, setPrompt] = useState('');
   const [generatedImage, setGeneratedImage] = useState('');
+  const [finalCompositeImage, setFinalCompositeImage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const overlayImages = async (baseImageData, overlayImageData) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      const baseImg = new window.Image();
+      const overlayImg = new window.Image();
+      
+      baseImg.onload = () => {
+        canvas.width = baseImg.width;
+        canvas.height = baseImg.height;
+
+        ctx.drawImage(baseImg, 0, 0);
+        
+        overlayImg.onload = () => {
+          const containerSize = Math.min(baseImg.width, baseImg.height) * 0.15;
+          const padding = 20;
+          const containerX = baseImg.width - containerSize - padding;
+          const containerY = padding;
+
+          const overlayAspect = overlayImg.width / overlayImg.height;
+          let logoWidth, logoHeight, logoX, logoY;
+
+          const useCircularMask = true; 
+          
+          if (useCircularMask) {
+            const logoSize = containerSize * 0.8;
+            logoWidth = logoHeight = logoSize;
+            logoX = containerX + (containerSize - logoSize) / 2;
+            logoY = containerY + (containerSize - logoSize) / 2;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(containerX + containerSize/2, containerY + containerSize/2, containerSize/2, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2 * 0.9, 0, 2 * Math.PI);
+            ctx.clip();
+            
+            if (overlayAspect > 1) {
+              const drawHeight = logoSize;
+              const drawWidth = drawHeight * overlayAspect;
+              const offsetX = -(drawWidth - logoSize) / 2;
+              ctx.drawImage(overlayImg, logoX + offsetX, logoY, drawWidth, drawHeight);
+            } else {
+              const drawWidth = logoSize;
+              const drawHeight = drawWidth / overlayAspect;
+              const offsetY = -(drawHeight - logoSize) / 2;
+              ctx.drawImage(overlayImg, logoX, logoY + offsetY, drawWidth, drawHeight);
+            }
+            
+            ctx.restore();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(containerX + containerSize/2, containerY + containerSize/2, containerSize/2, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+          } else {
+            const maxLogoSize = containerSize * 0.9;
+
+            if (overlayAspect > 1) {
+              logoWidth = maxLogoSize;
+              logoHeight = logoWidth / overlayAspect;
+            } else {
+              logoHeight = maxLogoSize;
+              logoWidth = logoHeight * overlayAspect;
+            }
+
+            logoX = containerX + (containerSize - logoWidth) / 2;
+            logoY = containerY + (containerSize - logoHeight) / 2;
+
+            const borderRadius = 12;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.beginPath();
+            ctx.roundRect(logoX - 8, logoY - 8, logoWidth + 16, logoHeight + 16, borderRadius);
+            ctx.fill();
+          
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            ctx.drawImage(overlayImg, logoX, logoY, logoWidth, logoHeight);
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(logoX - 8, logoY - 8, logoWidth + 16, logoHeight + 16, borderRadius);
+            ctx.stroke();
+          }
+          
+          resolve(canvas.toDataURL('image/png'));
+        };
+        
+        overlayImg.src = overlayImageData;
+      };
+      
+      baseImg.src = baseImageData;
+    });
+  };
 
   const handleFileChange = (file) => {
     if (file && file.type.startsWith('image/')) {
@@ -53,6 +164,7 @@ export default function ImageGenerator() {
   const resetToUploader = () => {
     setInputImageBase64(null);
     setGeneratedImage('');
+    setFinalCompositeImage('');
     setPrompt('');
     setError('');
   };
@@ -66,6 +178,7 @@ export default function ImageGenerator() {
     setLoading(true);
     setError('');
     setGeneratedImage('');
+    setFinalCompositeImage('');
 
     try {
       console.log('Enviando solicitud de generación...');
@@ -76,8 +189,7 @@ export default function ImageGenerator() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          prompt: prompt.trim(), 
-          image: inputImageBase64 
+          prompt: prompt.trim()
         }),
       });
 
@@ -102,7 +214,14 @@ export default function ImageGenerator() {
       console.log('Resultado exitoso recibido');
       
       if (result.imageBase64) {
-        setGeneratedImage(`data:image/png;base64,${result.imageBase64}`);
+        const generatedImageData = `data:image/png;base64,${result.imageBase64}`;
+        setGeneratedImage(generatedImageData);
+
+        if (inputImageBase64) {
+          console.log('Creando imagen compuesta...');
+          const compositeImage = await overlayImages(generatedImageData, inputImageBase64);
+          setFinalCompositeImage(compositeImage);
+        }
       } else {
         throw new Error('No se recibió imagen en la respuesta');
       }
@@ -202,44 +321,30 @@ export default function ImageGenerator() {
       {error && (
         <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
           <strong>Error:</strong> {error}
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm">Detalles técnicos</summary>
-            <p className="text-xs mt-1 font-mono bg-red-50 p-2 rounded">
-              Verifica que tu clave GEMINI_API_KEY esté configurada correctamente en .env.local
-            </p>
-          </details>
         </div>
       )}
       
-      {generatedImage && (
+      {(finalCompositeImage || generatedImage) && (
         <div className="mt-8">
           <h2 className="text-2xl font-bold text-center mb-6">Resultado</h2>
           <div className="relative">
             <Image 
               id="generated-image" 
-              src={generatedImage} 
+              src={finalCompositeImage || generatedImage} 
               alt="Imagen generada" 
               width={1024} 
               height={1024} 
               className="w-full rounded-lg shadow-xl" 
             />
-            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 border-2 border-white rounded-lg overflow-hidden shadow-lg bg-white/10 backdrop-blur-sm">
-              <Image 
-                id="thumbnail-image" 
-                src={inputImageBase64} 
-                alt="Imagen original (referencia)" 
-                width={96} 
-                height={96} 
-                className="w-12 h-12 sm:w-16 sm:h-16 object-cover opacity-80" 
-              />
-            </div>
-            <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-              💡 Tu imagen original debería aparecer como logo en la esquina superior derecha de la imagen generada
-            </div>
+            {finalCompositeImage && (
+              <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                ✅ Tu imagen original ha sido integrada como logo en la esquina superior derecha
+              </div>
+            )}
           </div>
           <div className="mt-4 flex flex-col sm:flex-row gap-2">
             <a 
-              href={generatedImage} 
+              href={finalCompositeImage || generatedImage} 
               download="imagen-generada.png" 
               className="flex-1 text-center bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition"
             >
