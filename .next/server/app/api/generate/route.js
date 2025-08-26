@@ -19,7 +19,7 @@ exports.modules = {
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   POST: () => (/* binding */ POST)\n/* harmony export */ });\n/* harmony import */ var next_server__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! next/server */ \"(rsc)/./node_modules/next/dist/api/server.js\");\n\nasync function POST(request) {\n    try {\n        const { prompt, image } = await request.json();\n        if (!prompt) {\n            return next_server__WEBPACK_IMPORTED_MODULE_0__.NextResponse.json({\n                error: 'El prompt es requerido'\n            }, {\n                status: 400\n            });\n        }\n        const finalPrompt = `TAREA: Genera una imagen de: ${prompt}\n\n- Genera una imagen de: ${prompt}\n- Resolución alta y calidad profesional\n\nVERIFICACIÓN: La IMAGEN FINAL debe mostrar \"${prompt}\"`;\n        const apiKey = process.env.GEMINI_API_KEY;\n        if (!apiKey) {\n            return next_server__WEBPACK_IMPORTED_MODULE_0__.NextResponse.json({\n                error: 'La clave de API de Gemini no está configurada en el servidor.'\n            }, {\n                status: 500\n            });\n        }\n        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`;\n        const contentParts = [\n            {\n                text: finalPrompt\n            }\n        ];\n        if (image) {\n            const base64Data = image.replace(/^data:image\\/[^;]+;base64,/, '');\n            contentParts.push({\n                inlineData: {\n                    mimeType: \"image/jpeg\",\n                    data: base64Data\n                }\n            });\n        }\n        const payload = {\n            contents: [\n                {\n                    parts: contentParts\n                }\n            ],\n            generationConfig: {\n                responseModalities: [\n                    \"TEXT\",\n                    \"IMAGE\"\n                ]\n            }\n        };\n        console.log('Enviando solicitud a Gemini 2.0 Flash:', apiUrl);\n        console.log('Payload:', JSON.stringify(payload, null, 2));\n        const apiResponse = await fetch(apiUrl, {\n            method: 'POST',\n            headers: {\n                'Content-Type': 'application/json',\n                'x-goog-api-key': apiKey\n            },\n            body: JSON.stringify(payload)\n        });\n        console.log('Respuesta de Gemini API:', apiResponse.status, apiResponse.statusText);\n        if (!apiResponse.ok) {\n            const errorText = await apiResponse.text();\n            console.error('Error de la API de Gemini:', errorText);\n            let errorMessage = errorText;\n            try {\n                const errorData = JSON.parse(errorText);\n                errorMessage = errorData.error?.message || errorData.message || errorText;\n            } catch (e) {}\n            return next_server__WEBPACK_IMPORTED_MODULE_0__.NextResponse.json({\n                error: `Error de la API externa: ${errorMessage}`\n            }, {\n                status: apiResponse.status\n            });\n        }\n        const result = await apiResponse.json();\n        console.log('Resultado de Gemini API:', result);\n        let imageBase64 = null;\n        if (result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) {\n            for (const part of result.candidates[0].content.parts){\n                if (part.inlineData && part.inlineData.data) {\n                    imageBase64 = part.inlineData.data;\n                    break;\n                }\n            }\n        }\n        if (!imageBase64) {\n            console.error('Estructura de respuesta inesperada:', result);\n            return next_server__WEBPACK_IMPORTED_MODULE_0__.NextResponse.json({\n                error: 'La respuesta de la API no contenía una imagen válida. Es posible que el modelo no haya generado una imagen esta vez. Intenta de nuevo con un prompt más específico como \"genera una imagen de...\"'\n            }, {\n                status: 500\n            });\n        }\n        const cleanBase64 = imageBase64.replace(/^data:image\\/[a-z]+;base64,/, '');\n        return next_server__WEBPACK_IMPORTED_MODULE_0__.NextResponse.json({\n            imageBase64: cleanBase64\n        });\n    } catch (error) {\n        console.error('Error interno del servidor:', error);\n        return next_server__WEBPACK_IMPORTED_MODULE_0__.NextResponse.json({\n            error: `Ocurrió un error inesperado en el servidor: ${error.message}`\n        }, {\n            status: 500\n        });\n    }\n}\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,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VSxJQUFJNkIsS0FBSzdCLFVBQVUsQ0FBQ0UsSUFBSSxFQUFFO29CQUMzQ3dCLGNBQWNHLEtBQUs3QixVQUFVLENBQUNFLElBQUk7b0JBQ2xDO2dCQUNGO1lBQ0Y7UUFDRjtRQUVBLElBQUksQ0FBQ3dCLGFBQWE7WUFDaEJsQixRQUFRckIsS0FBSyxDQUFDLHVDQUF1Q3NDO1lBQ3JELE9BQU81QyxxREFBWUEsQ0FBQ0ssSUFBSSxDQUFDO2dCQUN2QkMsT0FBTztZQUNULEdBQUc7Z0JBQUVDLFFBQVE7WUFBSTtRQUNuQjtRQUVBLE1BQU0wQyxjQUFjSixZQUFZNUIsT0FBTyxDQUFDLCtCQUErQjtRQUV2RSxPQUFPakIscURBQVlBLENBQUNLLElBQUksQ0FBQztZQUFFd0MsYUFBYUk7UUFBWTtJQUV0RCxFQUFFLE9BQU8zQyxPQUFPO1FBQ2RxQixRQUFRckIsS0FBSyxDQUFDLCtCQUErQkE7UUFDN0MsT0FBT04scURBQVlBLENBQUNLLElBQUksQ0FBQztZQUN2QkMsT0FBTyxDQUFDLDRDQUE0QyxFQUFFQSxNQUFNb0MsT0FBTyxFQUFFO1FBQ3ZFLEdBQUc7WUFBRW5DLFFBQVE7UUFBSTtJQUNuQjtBQUNGIiwic291cmNlcyI6WyJDOlxcVXNlcnNcXFBjXFxEb2N1bWVudHNcXEdpdEh1YlxcYXBwMDctMjVfM1xcYXBwXFxhcGlcXGdlbmVyYXRlXFxyb3V0ZS5qcyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBOZXh0UmVzcG9uc2UgfSBmcm9tICduZXh0L3NlcnZlcic7XHJcblxyXG5leHBvcnQgYXN5bmMgZnVuY3Rpb24gUE9TVChyZXF1ZXN0KSB7XHJcbiAgdHJ5IHtcclxuICAgIGNvbnN0IHsgcHJvbXB0LCBpbWFnZSB9ID0gYXdhaXQgcmVxdWVzdC5qc29uKCk7XHJcblxyXG4gICAgaWYgKCFwcm9tcHQpIHtcclxuICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsgZXJyb3I6ICdFbCBwcm9tcHQgZXMgcmVxdWVyaWRvJyB9LCB7IHN0YXR1czogNDAwIH0pO1xyXG4gICAgfVxyXG5cclxuY29uc3QgZmluYWxQcm9tcHQgPSBgVEFSRUE6IEdlbmVyYSB1bmEgaW1hZ2VuIGRlOiAke3Byb21wdH1cclxuXHJcbi0gR2VuZXJhIHVuYSBpbWFnZW4gZGU6ICR7cHJvbXB0fVxyXG4tIFJlc29sdWNpw7NuIGFsdGEgeSBjYWxpZGFkIHByb2Zlc2lvbmFsXHJcblxyXG5WRVJJRklDQUNJw5NOOiBMYSBJTUFHRU4gRklOQUwgZGViZSBtb3N0cmFyIFwiJHtwcm9tcHR9XCJgO1xyXG4gICAgY29uc3QgYXBpS2V5ID0gcHJvY2Vzcy5lbnYuR0VNSU5JX0FQSV9LRVk7XHJcbiAgICBpZiAoIWFwaUtleSkge1xyXG4gICAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oeyBcclxuICAgICAgICBlcnJvcjogJ0xhIGNsYXZlIGRlIEFQSSBkZSBHZW1pbmkgbm8gZXN0w6EgY29uZmlndXJhZGEgZW4gZWwgc2Vydmlkb3IuJyBcclxuICAgICAgfSwgeyBzdGF0dXM6IDUwMCB9KTtcclxuICAgIH1cclxuXHJcbiAgICBjb25zdCBhcGlVcmwgPSBgaHR0cHM6Ly9nZW5lcmF0aXZlbGFuZ3VhZ2UuZ29vZ2xlYXBpcy5jb20vdjFiZXRhL21vZGVscy9nZW1pbmktMi4wLWZsYXNoLXByZXZpZXctaW1hZ2UtZ2VuZXJhdGlvbjpnZW5lcmF0ZUNvbnRlbnRgO1xyXG5cclxuICAgIGNvbnN0IGNvbnRlbnRQYXJ0cyA9IFtcclxuICAgICAgeyB0ZXh0OiBmaW5hbFByb21wdCB9XHJcbiAgICBdO1xyXG5cclxuICAgIGlmIChpbWFnZSkge1xyXG4gICAgICBjb25zdCBiYXNlNjREYXRhID0gaW1hZ2UucmVwbGFjZSgvXmRhdGE6aW1hZ2VcXC9bXjtdKztiYXNlNjQsLywgJycpO1xyXG4gICAgICBcclxuICAgICAgY29udGVudFBhcnRzLnB1c2goe1xyXG4gICAgICAgIGlubGluZURhdGE6IHtcclxuICAgICAgICAgIG1pbWVUeXBlOiBcImltYWdlL2pwZWdcIiwgXHJcbiAgICAgICAgICBkYXRhOiBiYXNlNjREYXRhXHJcbiAgICAgICAgfVxyXG4gICAgICB9KTtcclxuICAgIH1cclxuXHJcbiAgICBjb25zdCBwYXlsb2FkID0ge1xyXG4gICAgICBjb250ZW50czogW3tcclxuICAgICAgICBwYXJ0czogY29udGVudFBhcnRzXHJcbiAgICAgIH1dLFxyXG4gICAgICBnZW5lcmF0aW9uQ29uZmlnOiB7XHJcbiAgICAgICAgcmVzcG9uc2VNb2RhbGl0aWVzOiBbXCJURVhUXCIsIFwiSU1BR0VcIl0sXHJcbiAgICAgIH1cclxuICAgIH07XHJcblxyXG4gICAgY29uc29sZS5sb2coJ0VudmlhbmRvIHNvbGljaXR1ZCBhIEdlbWluaSAyLjAgRmxhc2g6JywgYXBpVXJsKTtcclxuICAgIGNvbnNvbGUubG9nKCdQYXlsb2FkOicsIEpTT04uc3RyaW5naWZ5KHBheWxvYWQsIG51bGwsIDIpKTtcclxuXHJcbiAgICBjb25zdCBhcGlSZXNwb25zZSA9IGF3YWl0IGZldGNoKGFwaVVybCwge1xyXG4gICAgICBtZXRob2Q6ICdQT1NUJyxcclxuICAgICAgaGVhZGVyczogeyBcclxuICAgICAgICAnQ29udGVudC1UeXBlJzogJ2FwcGxpY2F0aW9uL2pzb24nLFxyXG4gICAgICAgICd4LWdvb2ctYXBpLWtleSc6IGFwaUtleVxyXG4gICAgICB9LFxyXG4gICAgICBib2R5OiBKU09OLnN0cmluZ2lmeShwYXlsb2FkKSxcclxuICAgIH0pO1xyXG5cclxuICAgIGNvbnNvbGUubG9nKCdSZXNwdWVzdGEgZGUgR2VtaW5pIEFQSTonLCBhcGlSZXNwb25zZS5zdGF0dXMsIGFwaVJlc3BvbnNlLnN0YXR1c1RleHQpO1xyXG5cclxuICAgIGlmICghYXBpUmVzcG9uc2Uub2spIHtcclxuICAgICAgY29uc3QgZXJyb3JUZXh0ID0gYXdhaXQgYXBpUmVzcG9uc2UudGV4dCgpO1xyXG4gICAgICBjb25zb2xlLmVycm9yKCdFcnJvciBkZSBsYSBBUEkgZGUgR2VtaW5pOicsIGVycm9yVGV4dCk7XHJcbiAgICAgIFxyXG4gICAgICBsZXQgZXJyb3JNZXNzYWdlID0gZXJyb3JUZXh0O1xyXG4gICAgICB0cnkge1xyXG4gICAgICAgIGNvbnN0IGVycm9yRGF0YSA9IEpTT04ucGFyc2UoZXJyb3JUZXh0KTtcclxuICAgICAgICBlcnJvck1lc3NhZ2UgPSBlcnJvckRhdGEuZXJyb3I/Lm1lc3NhZ2UgfHwgZXJyb3JEYXRhLm1lc3NhZ2UgfHwgZXJyb3JUZXh0O1xyXG4gICAgICB9IGNhdGNoIChlKSB7XHJcbiAgICAgIH1cclxuICAgICAgXHJcbiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbih7IFxyXG4gICAgICAgIGVycm9yOiBgRXJyb3IgZGUgbGEgQVBJIGV4dGVybmE6ICR7ZXJyb3JNZXNzYWdlfWAgXHJcbiAgICAgIH0sIHsgc3RhdHVzOiBhcGlSZXNwb25zZS5zdGF0dXMgfSk7XHJcbiAgICB9XHJcblxyXG4gICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgYXBpUmVzcG9uc2UuanNvbigpO1xyXG4gICAgY29uc29sZS5sb2coJ1Jlc3VsdGFkbyBkZSBHZW1pbmkgQVBJOicsIHJlc3VsdCk7XHJcblxyXG4gICAgbGV0IGltYWdlQmFzZTY0ID0gbnVsbDtcclxuICAgIFxyXG4gICAgaWYgKHJlc3VsdC5jYW5kaWRhdGVzICYmIHJlc3VsdC5jYW5kaWRhdGVzWzBdICYmIHJlc3VsdC5jYW5kaWRhdGVzWzBdLmNvbnRlbnQgJiYgcmVzdWx0LmNhbmRpZGF0ZXNbMF0uY29udGVudC5wYXJ0cykge1xyXG4gICAgICBmb3IgKGNvbnN0IHBhcnQgb2YgcmVzdWx0LmNhbmRpZGF0ZXNbMF0uY29udGVudC5wYXJ0cykge1xyXG4gICAgICAgIGlmIChwYXJ0LmlubGluZURhdGEgJiYgcGFydC5pbmxpbmVEYXRhLmRhdGEpIHtcclxuICAgICAgICAgIGltYWdlQmFzZTY0ID0gcGFydC5pbmxpbmVEYXRhLmRhdGE7XHJcbiAgICAgICAgICBicmVhaztcclxuICAgICAgICB9XHJcbiAgICAgIH1cclxuICAgIH1cclxuXHJcbiAgICBpZiAoIWltYWdlQmFzZTY0KSB7XHJcbiAgICAgIGNvbnNvbGUuZXJyb3IoJ0VzdHJ1Y3R1cmEgZGUgcmVzcHVlc3RhIGluZXNwZXJhZGE6JywgcmVzdWx0KTtcclxuICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHsgXHJcbiAgICAgICAgZXJyb3I6ICdMYSByZXNwdWVzdGEgZGUgbGEgQVBJIG5vIGNvbnRlbsOtYSB1bmEgaW1hZ2VuIHbDoWxpZGEuIEVzIHBvc2libGUgcXVlIGVsIG1vZGVsbyBubyBoYXlhIGdlbmVyYWRvIHVuYSBpbWFnZW4gZXN0YSB2ZXouIEludGVudGEgZGUgbnVldm8gY29uIHVuIHByb21wdCBtw6FzIGVzcGVjw61maWNvIGNvbW8gXCJnZW5lcmEgdW5hIGltYWdlbiBkZS4uLlwiJ1xyXG4gICAgICB9LCB7IHN0YXR1czogNTAwIH0pO1xyXG4gICAgfVxyXG5cclxuICAgIGNvbnN0IGNsZWFuQmFzZTY0ID0gaW1hZ2VCYXNlNjQucmVwbGFjZSgvXmRhdGE6aW1hZ2VcXC9bYS16XSs7YmFzZTY0LC8sICcnKTtcclxuXHJcbiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oeyBpbWFnZUJhc2U2NDogY2xlYW5CYXNlNjQgfSk7XHJcblxyXG4gIH0gY2F0Y2ggKGVycm9yKSB7XHJcbiAgICBjb25zb2xlLmVycm9yKCdFcnJvciBpbnRlcm5vIGRlbCBzZXJ2aWRvcjonLCBlcnJvcik7XHJcbiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oeyBcclxuICAgICAgZXJyb3I6IGBPY3VycmnDsyB1biBlcnJvciBpbmVzcGVyYWRvIGVuIGVsIHNlcnZpZG9yOiAke2Vycm9yLm1lc3NhZ2V9YCBcclxuICAgIH0sIHsgc3RhdHVzOiA1MDAgfSk7XHJcbiAgfVxyXG59Il0sIm5hbWVzIjpbIk5leHRSZXNwb25zZSIsIlBPU1QiLCJyZXF1ZXN0IiwicHJvbXB0IiwiaW1hZ2UiLCJqc29uIiwiZXJyb3IiLCJzdGF0dXMiLCJmaW5hbFByb21wdCIsImFwaUtleSIsInByb2Nlc3MiLCJlbnYiLCJHRU1JTklfQVBJX0tFWSIsImFwaVVybCIsImNvbnRlbnRQYXJ0cyIsInRleHQiLCJiYXNlNjREYXRhIiwicmVwbGFjZSIsInB1c2giLCJpbmxpbmVEYXRhIiwibWltZVR5cGUiLCJkYXRhIiwicGF5bG9hZCIsImNvbnRlbnRzIiwicGFydHMiLCJnZW5lcmF0aW9uQ29uZmlnIiwicmVzcG9uc2VNb2RhbGl0aWVzIiwiY29uc29sZSIsImxvZyIsIkpTT04iLCJzdHJpbmdpZnkiLCJhcGlSZXNwb25zZSIsImZldGNoIiwibWV0aG9kIiwiaGVhZGVycyIsImJvZHkiLCJzdGF0dXNUZXh0Iiwib2siLCJlcnJvclRleHQiLCJlcnJvck1lc3NhZ2UiLCJlcnJvckRhdGEiLCJwYXJzZSIsIm1lc3NhZ2UiLCJlIiwicmVzdWx0IiwiaW1hZ2VCYXNlNjQiLCJjYW5kaWRhdGVzIiwiY29udGVudCIsInBhcnQiLCJjbGVhbkJhc2U2NCJdLCJpZ25vcmVMaXN0IjpbXSwic291cmNlUm9vdCI6IiJ9\n//# sourceURL=webpack-internal:///(rsc)/./app/api/generate/route.js\n");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   GET: () => (/* binding */ GET),\n/* harmony export */   POST: () => (/* binding */ POST)\n/* harmony export */ });\n/* harmony import */ var _google_genai__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @google/genai */ \"(rsc)/./node_modules/@google/genai/dist/node/index.mjs\");\n/* harmony import */ var next_server__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! next/server */ \"(rsc)/./node_modules/next/dist/api/server.js\");\n\n\nasync function POST(request) {\n    try {\n        if (!process.env.GEMINI_API_KEY) {\n            return next_server__WEBPACK_IMPORTED_MODULE_1__.NextResponse.json({\n                error: 'API key de Google AI no configurada'\n            }, {\n                status: 500\n            });\n        }\n        const { prompt } = await request.json();\n        if (!prompt || !prompt.trim()) {\n            return next_server__WEBPACK_IMPORTED_MODULE_1__.NextResponse.json({\n                error: 'Prompt es requerido'\n            }, {\n                status: 400\n            });\n        }\n        // Aspect ratio fijo a 1:1 siempre\n        const fixedAspectRatio = \"1:1\";\n        const aspectRatioDescription = \"square format\";\n        console.log('Generando imagen con prompt:', prompt);\n        console.log('AspectRatio fijo:', fixedAspectRatio);\n        async function main() {\n            let info;\n            const ai = new _google_genai__WEBPACK_IMPORTED_MODULE_0__.GoogleGenAI({\n                apiKey: process.env.GEMINI_API_KEY\n            });\n            const config = {\n                responseModalities: [\n                    'IMAGE',\n                    'TEXT'\n                ],\n                responseMimeType: 'text/plain'\n            };\n            const model = \"gemini-2.0-flash-preview-image-generation\";\n            const contents = [\n                {\n                    role: 'user',\n                    parts: [\n                        {\n                            text: `Generate an image: ${prompt.trim()}, in ${fixedAspectRatio} aspect ratio, ${aspectRatioDescription}`\n                        }\n                    ]\n                }\n            ];\n            const response = await ai.models.generateContentStream({\n                model,\n                config,\n                contents\n            });\n            for await (const chunk of response){\n                if (!chunk.candidates || !chunk.candidates[0].content || !chunk.candidates[0].content.parts) {\n                    continue;\n                }\n                if (chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData) {\n                    const inlineData = chunk.candidates[0].content.parts[0].inlineData;\n                    return inlineData;\n                } else {\n                    info = chunk.text;\n                    console.log('Texto generado:', chunk.text);\n                }\n            }\n            throw new Error('No se generó imagen en la respuesta');\n        }\n        const result_img = await main();\n        console.log(\"Imagen generada exitosamente\");\n        console.log(result_img);\n        return next_server__WEBPACK_IMPORTED_MODULE_1__.NextResponse.json({\n            imageBase64: result_img.data,\n            mimeType: result_img.mimeType,\n            success: true,\n            model: 'gemini-2.0-flash-preview-image-generation',\n            aspectRatio: fixedAspectRatio,\n            aspectRatioDescription: aspectRatioDescription\n        });\n    } catch (error) {\n        console.error('Error en la generación de imagen:', error);\n        let errorMessage = 'Error interno del servidor';\n        let statusCode = 500;\n        if (error.message.includes('API key') || error.message.includes('authentication')) {\n            errorMessage = 'Error de autenticación con Google AI';\n            statusCode = 401;\n        } else if (error.message.includes('quota') || error.message.includes('limit')) {\n            errorMessage = 'Límite de API alcanzado, intenta más tarde';\n            statusCode = 429;\n        } else if (error.message.includes('prompt') || error.message.includes('content policy')) {\n            errorMessage = 'Prompt inválido o bloqueado por filtros de contenido';\n            statusCode = 400;\n        } else if (error.message.includes('model') || error.message.includes('not found')) {\n            errorMessage = 'Modelo no encontrado o no disponible. Puede requerir billing habilitado.';\n            statusCode = 404;\n        } else if (error.message.includes('No se generó imagen')) {\n            errorMessage = 'El modelo no generó imagen. Intenta con un prompt más específico.';\n            statusCode = 422;\n        } else if (error.message) {\n            errorMessage = error.message;\n        }\n        return next_server__WEBPACK_IMPORTED_MODULE_1__.NextResponse.json({\n            error: errorMessage,\n            details:  true ? error.stack : 0,\n            suggestion: 'Verifica que tengas billing habilitado para generación de imágenes'\n        }, {\n            status: statusCode\n        });\n    }\n}\nasync function GET() {\n    return next_server__WEBPACK_IMPORTED_MODULE_1__.NextResponse.json({\n        message: 'API de generación de imágenes funcionando',\n        status: 'ok',\n        model: 'gemini-2.0-flash-preview-image-generation',\n        aspectRatio: \"1:1 (fijo)\",\n        aspectRatioDescription: \"Square format - formato cuadrado fijo para todas las imágenes\",\n        usage: {\n            method: \"POST\",\n            body: {\n                prompt: \"string (requerido)\"\n            },\n            example: {\n                prompt: \"hombre en cabaña\"\n            }\n        }\n    });\n}\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKHJzYykvLi9hcHAvYXBpL2dlbmVyYXRlL3JvdXRlLmpzIiwibWFwcGluZ3MiOiI7Ozs7Ozs7QUFBNEM7QUFDRDtBQUVwQyxlQUFlRSxLQUFLQyxPQUFPO0lBQ2hDLElBQUk7UUFDRixJQUFJLENBQUNDLFFBQVFDLEdBQUcsQ0FBQ0MsY0FBYyxFQUFFO1lBQy9CLE9BQU9MLHFEQUFZQSxDQUFDTSxJQUFJLENBQ3RCO2dCQUFFQyxPQUFPO1lBQXNDLEdBQy9DO2dCQUFFQyxRQUFRO1lBQUk7UUFFbEI7UUFFQSxNQUFNLEVBQUVDLE1BQU0sRUFBRSxHQUFHLE1BQU1QLFFBQVFJLElBQUk7UUFFckMsSUFBSSxDQUFDRyxVQUFVLENBQUNBLE9BQU9DLElBQUksSUFBSTtZQUM3QixPQUFPVixxREFBWUEsQ0FBQ00sSUFBSSxDQUN0QjtnQkFBRUMsT0FBTztZQUFzQixHQUMvQjtnQkFBRUMsUUFBUTtZQUFJO1FBRWxCO1FBRUEsa0NBQWtDO1FBQ2xDLE1BQU1HLG1CQUFtQjtRQUN6QixNQUFNQyx5QkFBeUI7UUFFL0JDLFFBQVFDLEdBQUcsQ0FBQyxnQ0FBZ0NMO1FBQzVDSSxRQUFRQyxHQUFHLENBQUMscUJBQXFCSDtRQUVqQyxlQUFlSTtZQUNiLElBQUlDO1lBQ0osTUFBTUMsS0FBSyxJQUFJbEIsc0RBQVdBLENBQUM7Z0JBQ3pCbUIsUUFBUWYsUUFBUUMsR0FBRyxDQUFDQyxjQUFjO1lBQ3BDO1lBRUEsTUFBTWMsU0FBUztnQkFDYkMsb0JBQW9CO29CQUNsQjtvQkFDQTtpQkFDRDtnQkFDREMsa0JBQWtCO1lBQ3BCO1lBRUEsTUFBTUMsUUFBUTtZQUVkLE1BQU1DLFdBQVc7Z0JBQ2Y7b0JBQ0VDLE1BQU07b0JBQ05DLE9BQU87d0JBQ0w7NEJBQ0VDLE1BQU0sQ0FBQyxtQkFBbUIsRUFBRWpCLE9BQU9DLElBQUksR0FBRyxLQUFLLEVBQUVDLGlCQUFpQixlQUFlLEVBQUVDLHdCQUF3Qjt3QkFDN0c7cUJBQ0Q7Z0JBQ0g7YUFDRDtZQUVELE1BQU1lLFdBQVcsTUFBTVYsR0FBR1csTUFBTSxDQUFDQyxxQkFBcUIsQ0FBQztnQkFDckRQO2dCQUNBSDtnQkFDQUk7WUFDRjtZQUVBLFdBQVcsTUFBTU8sU0FBU0gsU0FBVTtnQkFDbEMsSUFBSSxDQUFDRyxNQUFNQyxVQUFVLElBQUksQ0FBQ0QsTUFBTUMsVUFBVSxDQUFDLEVBQUUsQ0FBQ0MsT0FBTyxJQUFJLENBQUNGLE1BQU1DLFVBQVUsQ0FBQyxFQUFFLENBQUNDLE9BQU8sQ0FBQ1AsS0FBSyxFQUFFO29CQUMzRjtnQkFDRjtnQkFFQSxJQUFJSyxNQUFNQyxVQUFVLEVBQUUsQ0FBQyxFQUFFLEVBQUVDLFNBQVNQLE9BQU8sQ0FBQyxFQUFFLEVBQUVRLFlBQVk7b0JBQzFELE1BQU1BLGFBQWFILE1BQU1DLFVBQVUsQ0FBQyxFQUFFLENBQUNDLE9BQU8sQ0FBQ1AsS0FBSyxDQUFDLEVBQUUsQ0FBQ1EsVUFBVTtvQkFDbEUsT0FBT0E7Z0JBQ1QsT0FDSztvQkFDSGpCLE9BQU9jLE1BQU1KLElBQUk7b0JBQ2pCYixRQUFRQyxHQUFHLENBQUMsbUJBQW1CZ0IsTUFBTUosSUFBSTtnQkFDM0M7WUFDRjtZQUVBLE1BQU0sSUFBSVEsTUFBTTtRQUNsQjtRQUVBLE1BQU1DLGFBQWEsTUFBTXBCO1FBRXpCRixRQUFRQyxHQUFHLENBQUM7UUFDWkQsUUFBUUMsR0FBRyxDQUFDcUI7UUFFWixPQUFPbkMscURBQVlBLENBQUNNLElBQUksQ0FBQztZQUN2QjhCLGFBQWFELFdBQVdFLElBQUk7WUFDNUJDLFVBQVVILFdBQVdHLFFBQVE7WUFDN0JDLFNBQVM7WUFDVGpCLE9BQU87WUFDUGtCLGFBQWE3QjtZQUNiQyx3QkFBd0JBO1FBQzFCO0lBRUYsRUFBRSxPQUFPTCxPQUFPO1FBQ2RNLFFBQVFOLEtBQUssQ0FBQyxxQ0FBcUNBO1FBRW5ELElBQUlrQyxlQUFlO1FBQ25CLElBQUlDLGFBQWE7UUFFakIsSUFBSW5DLE1BQU1vQyxPQUFPLENBQUNDLFFBQVEsQ0FBQyxjQUFjckMsTUFBTW9DLE9BQU8sQ0FBQ0MsUUFBUSxDQUFDLG1CQUFtQjtZQUNqRkgsZUFBZTtZQUNmQyxhQUFhO1FBQ2YsT0FBTyxJQUFJbkMsTUFBTW9DLE9BQU8sQ0FBQ0MsUUFBUSxDQUFDLFlBQVlyQyxNQUFNb0MsT0FBTyxDQUFDQyxRQUFRLENBQUMsVUFBVTtZQUM3RUgsZUFBZTtZQUNmQyxhQUFhO1FBQ2YsT0FBTyxJQUFJbkMsTUFBTW9DLE9BQU8sQ0FBQ0MsUUFBUSxDQUFDLGFBQWFyQyxNQUFNb0MsT0FBTyxDQUFDQyxRQUFRLENBQUMsbUJBQW1CO1lBQ3ZGSCxlQUFlO1lBQ2ZDLGFBQWE7UUFDZixPQUFPLElBQUluQyxNQUFNb0MsT0FBTyxDQUFDQyxRQUFRLENBQUMsWUFBWXJDLE1BQU1vQyxPQUFPLENBQUNDLFFBQVEsQ0FBQyxjQUFjO1lBQ2pGSCxlQUFlO1lBQ2ZDLGFBQWE7UUFDZixPQUFPLElBQUluQyxNQUFNb0MsT0FBTyxDQUFDQyxRQUFRLENBQUMsd0JBQXdCO1lBQ3hESCxlQUFlO1lBQ2ZDLGFBQWE7UUFDZixPQUFPLElBQUluQyxNQUFNb0MsT0FBTyxFQUFFO1lBQ3hCRixlQUFlbEMsTUFBTW9DLE9BQU87UUFDOUI7UUFFQSxPQUFPM0MscURBQVlBLENBQUNNLElBQUksQ0FDdEI7WUFDRUMsT0FBT2tDO1lBQ1BJLFNBQVMxQyxLQUFzQyxHQUFHSSxNQUFNdUMsS0FBSyxHQUFHQyxDQUFTQTtZQUN6RUMsWUFBWTtRQUNkLEdBQ0E7WUFBRXhDLFFBQVFrQztRQUFXO0lBRXpCO0FBQ0Y7QUFFTyxlQUFlTztJQUNwQixPQUFPakQscURBQVlBLENBQUNNLElBQUksQ0FBQztRQUN2QnFDLFNBQVM7UUFDVG5DLFFBQVE7UUFDUmMsT0FBTztRQUNQa0IsYUFBYTtRQUNiNUIsd0JBQXdCO1FBQ3hCc0MsT0FBTztZQUNMQyxRQUFRO1lBQ1JDLE1BQU07Z0JBQ0ozQyxRQUFRO1lBQ1Y7WUFDQTRDLFNBQVM7Z0JBQ1A1QyxRQUFRO1lBQ1Y7UUFDRjtJQUNGO0FBQ0YiLCJzb3VyY2VzIjpbIkM6XFxVc2Vyc1xcUGNcXERvY3VtZW50c1xcR2l0SHViXFxhcHAwNy0yNV8zXFxhcHBcXGFwaVxcZ2VuZXJhdGVcXHJvdXRlLmpzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IEdvb2dsZUdlbkFJIH0gZnJvbSBcIkBnb29nbGUvZ2VuYWlcIjtcclxuaW1wb3J0IHsgTmV4dFJlc3BvbnNlIH0gZnJvbSAnbmV4dC9zZXJ2ZXInO1xyXG5cclxuZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIFBPU1QocmVxdWVzdCkge1xyXG4gIHRyeSB7XHJcbiAgICBpZiAoIXByb2Nlc3MuZW52LkdFTUlOSV9BUElfS0VZKSB7XHJcbiAgICAgIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbihcclxuICAgICAgICB7IGVycm9yOiAnQVBJIGtleSBkZSBHb29nbGUgQUkgbm8gY29uZmlndXJhZGEnIH0sIFxyXG4gICAgICAgIHsgc3RhdHVzOiA1MDAgfVxyXG4gICAgICApO1xyXG4gICAgfVxyXG5cclxuICAgIGNvbnN0IHsgcHJvbXB0IH0gPSBhd2FpdCByZXF1ZXN0Lmpzb24oKTtcclxuICAgIFxyXG4gICAgaWYgKCFwcm9tcHQgfHwgIXByb21wdC50cmltKCkpIHtcclxuICAgICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKFxyXG4gICAgICAgIHsgZXJyb3I6ICdQcm9tcHQgZXMgcmVxdWVyaWRvJyB9LCBcclxuICAgICAgICB7IHN0YXR1czogNDAwIH1cclxuICAgICAgKTtcclxuICAgIH1cclxuXHJcbiAgICAvLyBBc3BlY3QgcmF0aW8gZmlqbyBhIDE6MSBzaWVtcHJlXHJcbiAgICBjb25zdCBmaXhlZEFzcGVjdFJhdGlvID0gXCIxOjFcIjtcclxuICAgIGNvbnN0IGFzcGVjdFJhdGlvRGVzY3JpcHRpb24gPSBcInNxdWFyZSBmb3JtYXRcIjtcclxuXHJcbiAgICBjb25zb2xlLmxvZygnR2VuZXJhbmRvIGltYWdlbiBjb24gcHJvbXB0OicsIHByb21wdCk7XHJcbiAgICBjb25zb2xlLmxvZygnQXNwZWN0UmF0aW8gZmlqbzonLCBmaXhlZEFzcGVjdFJhdGlvKTtcclxuXHJcbiAgICBhc3luYyBmdW5jdGlvbiBtYWluKCkge1xyXG4gICAgICBsZXQgaW5mbztcclxuICAgICAgY29uc3QgYWkgPSBuZXcgR29vZ2xlR2VuQUkoe1xyXG4gICAgICAgIGFwaUtleTogcHJvY2Vzcy5lbnYuR0VNSU5JX0FQSV9LRVksXHJcbiAgICAgIH0pO1xyXG4gICAgICBcclxuICAgICAgY29uc3QgY29uZmlnID0ge1xyXG4gICAgICAgIHJlc3BvbnNlTW9kYWxpdGllczogW1xyXG4gICAgICAgICAgJ0lNQUdFJyxcclxuICAgICAgICAgICdURVhUJyxcclxuICAgICAgICBdLFxyXG4gICAgICAgIHJlc3BvbnNlTWltZVR5cGU6ICd0ZXh0L3BsYWluJyxcclxuICAgICAgfTtcclxuXHJcbiAgICAgIGNvbnN0IG1vZGVsID0gXCJnZW1pbmktMi4wLWZsYXNoLXByZXZpZXctaW1hZ2UtZ2VuZXJhdGlvblwiO1xyXG4gICAgICBcclxuICAgICAgY29uc3QgY29udGVudHMgPSBbXHJcbiAgICAgICAge1xyXG4gICAgICAgICAgcm9sZTogJ3VzZXInLFxyXG4gICAgICAgICAgcGFydHM6IFtcclxuICAgICAgICAgICAge1xyXG4gICAgICAgICAgICAgIHRleHQ6IGBHZW5lcmF0ZSBhbiBpbWFnZTogJHtwcm9tcHQudHJpbSgpfSwgaW4gJHtmaXhlZEFzcGVjdFJhdGlvfSBhc3BlY3QgcmF0aW8sICR7YXNwZWN0UmF0aW9EZXNjcmlwdGlvbn1gLCBcclxuICAgICAgICAgICAgfSxcclxuICAgICAgICAgIF0sXHJcbiAgICAgICAgfSxcclxuICAgICAgXTtcclxuICAgIFxyXG4gICAgICBjb25zdCByZXNwb25zZSA9IGF3YWl0IGFpLm1vZGVscy5nZW5lcmF0ZUNvbnRlbnRTdHJlYW0oe1xyXG4gICAgICAgIG1vZGVsLFxyXG4gICAgICAgIGNvbmZpZyxcclxuICAgICAgICBjb250ZW50cyxcclxuICAgICAgfSk7XHJcblxyXG4gICAgICBmb3IgYXdhaXQgKGNvbnN0IGNodW5rIG9mIHJlc3BvbnNlKSB7XHJcbiAgICAgICAgaWYgKCFjaHVuay5jYW5kaWRhdGVzIHx8ICFjaHVuay5jYW5kaWRhdGVzWzBdLmNvbnRlbnQgfHwgIWNodW5rLmNhbmRpZGF0ZXNbMF0uY29udGVudC5wYXJ0cykge1xyXG4gICAgICAgICAgY29udGludWU7XHJcbiAgICAgICAgfVxyXG4gICAgICAgIFxyXG4gICAgICAgIGlmIChjaHVuay5jYW5kaWRhdGVzPy5bMF0/LmNvbnRlbnQ/LnBhcnRzPy5bMF0/LmlubGluZURhdGEpIHtcclxuICAgICAgICAgIGNvbnN0IGlubGluZURhdGEgPSBjaHVuay5jYW5kaWRhdGVzWzBdLmNvbnRlbnQucGFydHNbMF0uaW5saW5lRGF0YTtcclxuICAgICAgICAgIHJldHVybiBpbmxpbmVEYXRhO1xyXG4gICAgICAgIH1cclxuICAgICAgICBlbHNlIHtcclxuICAgICAgICAgIGluZm8gPSBjaHVuay50ZXh0O1xyXG4gICAgICAgICAgY29uc29sZS5sb2coJ1RleHRvIGdlbmVyYWRvOicsIGNodW5rLnRleHQpO1xyXG4gICAgICAgIH1cclxuICAgICAgfVxyXG4gICAgICBcclxuICAgICAgdGhyb3cgbmV3IEVycm9yKCdObyBzZSBnZW5lcsOzIGltYWdlbiBlbiBsYSByZXNwdWVzdGEnKTtcclxuICAgIH1cclxuXHJcbiAgICBjb25zdCByZXN1bHRfaW1nID0gYXdhaXQgbWFpbigpOyBcclxuICAgIFxyXG4gICAgY29uc29sZS5sb2coXCJJbWFnZW4gZ2VuZXJhZGEgZXhpdG9zYW1lbnRlXCIpO1xyXG4gICAgY29uc29sZS5sb2cocmVzdWx0X2ltZyk7XHJcblxyXG4gICAgcmV0dXJuIE5leHRSZXNwb25zZS5qc29uKHtcclxuICAgICAgaW1hZ2VCYXNlNjQ6IHJlc3VsdF9pbWcuZGF0YSwgXHJcbiAgICAgIG1pbWVUeXBlOiByZXN1bHRfaW1nLm1pbWVUeXBlLCBcclxuICAgICAgc3VjY2VzczogdHJ1ZSxcclxuICAgICAgbW9kZWw6ICdnZW1pbmktMi4wLWZsYXNoLXByZXZpZXctaW1hZ2UtZ2VuZXJhdGlvbicsXHJcbiAgICAgIGFzcGVjdFJhdGlvOiBmaXhlZEFzcGVjdFJhdGlvLFxyXG4gICAgICBhc3BlY3RSYXRpb0Rlc2NyaXB0aW9uOiBhc3BlY3RSYXRpb0Rlc2NyaXB0aW9uXHJcbiAgICB9KTtcclxuXHJcbiAgfSBjYXRjaCAoZXJyb3IpIHtcclxuICAgIGNvbnNvbGUuZXJyb3IoJ0Vycm9yIGVuIGxhIGdlbmVyYWNpw7NuIGRlIGltYWdlbjonLCBlcnJvcik7XHJcblxyXG4gICAgbGV0IGVycm9yTWVzc2FnZSA9ICdFcnJvciBpbnRlcm5vIGRlbCBzZXJ2aWRvcic7XHJcbiAgICBsZXQgc3RhdHVzQ29kZSA9IDUwMDtcclxuXHJcbiAgICBpZiAoZXJyb3IubWVzc2FnZS5pbmNsdWRlcygnQVBJIGtleScpIHx8IGVycm9yLm1lc3NhZ2UuaW5jbHVkZXMoJ2F1dGhlbnRpY2F0aW9uJykpIHtcclxuICAgICAgZXJyb3JNZXNzYWdlID0gJ0Vycm9yIGRlIGF1dGVudGljYWNpw7NuIGNvbiBHb29nbGUgQUknO1xyXG4gICAgICBzdGF0dXNDb2RlID0gNDAxO1xyXG4gICAgfSBlbHNlIGlmIChlcnJvci5tZXNzYWdlLmluY2x1ZGVzKCdxdW90YScpIHx8IGVycm9yLm1lc3NhZ2UuaW5jbHVkZXMoJ2xpbWl0JykpIHtcclxuICAgICAgZXJyb3JNZXNzYWdlID0gJ0zDrW1pdGUgZGUgQVBJIGFsY2FuemFkbywgaW50ZW50YSBtw6FzIHRhcmRlJztcclxuICAgICAgc3RhdHVzQ29kZSA9IDQyOTtcclxuICAgIH0gZWxzZSBpZiAoZXJyb3IubWVzc2FnZS5pbmNsdWRlcygncHJvbXB0JykgfHwgZXJyb3IubWVzc2FnZS5pbmNsdWRlcygnY29udGVudCBwb2xpY3knKSkge1xyXG4gICAgICBlcnJvck1lc3NhZ2UgPSAnUHJvbXB0IGludsOhbGlkbyBvIGJsb3F1ZWFkbyBwb3IgZmlsdHJvcyBkZSBjb250ZW5pZG8nO1xyXG4gICAgICBzdGF0dXNDb2RlID0gNDAwO1xyXG4gICAgfSBlbHNlIGlmIChlcnJvci5tZXNzYWdlLmluY2x1ZGVzKCdtb2RlbCcpIHx8IGVycm9yLm1lc3NhZ2UuaW5jbHVkZXMoJ25vdCBmb3VuZCcpKSB7XHJcbiAgICAgIGVycm9yTWVzc2FnZSA9ICdNb2RlbG8gbm8gZW5jb250cmFkbyBvIG5vIGRpc3BvbmlibGUuIFB1ZWRlIHJlcXVlcmlyIGJpbGxpbmcgaGFiaWxpdGFkby4nO1xyXG4gICAgICBzdGF0dXNDb2RlID0gNDA0O1xyXG4gICAgfSBlbHNlIGlmIChlcnJvci5tZXNzYWdlLmluY2x1ZGVzKCdObyBzZSBnZW5lcsOzIGltYWdlbicpKSB7XHJcbiAgICAgIGVycm9yTWVzc2FnZSA9ICdFbCBtb2RlbG8gbm8gZ2VuZXLDsyBpbWFnZW4uIEludGVudGEgY29uIHVuIHByb21wdCBtw6FzIGVzcGVjw61maWNvLic7XHJcbiAgICAgIHN0YXR1c0NvZGUgPSA0MjI7XHJcbiAgICB9IGVsc2UgaWYgKGVycm9yLm1lc3NhZ2UpIHtcclxuICAgICAgZXJyb3JNZXNzYWdlID0gZXJyb3IubWVzc2FnZTtcclxuICAgIH1cclxuXHJcbiAgICByZXR1cm4gTmV4dFJlc3BvbnNlLmpzb24oXHJcbiAgICAgIHsgXHJcbiAgICAgICAgZXJyb3I6IGVycm9yTWVzc2FnZSxcclxuICAgICAgICBkZXRhaWxzOiBwcm9jZXNzLmVudi5OT0RFX0VOViA9PT0gJ2RldmVsb3BtZW50JyA/IGVycm9yLnN0YWNrIDogdW5kZWZpbmVkLFxyXG4gICAgICAgIHN1Z2dlc3Rpb246ICdWZXJpZmljYSBxdWUgdGVuZ2FzIGJpbGxpbmcgaGFiaWxpdGFkbyBwYXJhIGdlbmVyYWNpw7NuIGRlIGltw6FnZW5lcydcclxuICAgICAgfSwgXHJcbiAgICAgIHsgc3RhdHVzOiBzdGF0dXNDb2RlIH1cclxuICAgICk7XHJcbiAgfVxyXG59XHJcblxyXG5leHBvcnQgYXN5bmMgZnVuY3Rpb24gR0VUKCkge1xyXG4gIHJldHVybiBOZXh0UmVzcG9uc2UuanNvbih7IFxyXG4gICAgbWVzc2FnZTogJ0FQSSBkZSBnZW5lcmFjacOzbiBkZSBpbcOhZ2VuZXMgZnVuY2lvbmFuZG8nLFxyXG4gICAgc3RhdHVzOiAnb2snLFxyXG4gICAgbW9kZWw6ICdnZW1pbmktMi4wLWZsYXNoLXByZXZpZXctaW1hZ2UtZ2VuZXJhdGlvbicsXHJcbiAgICBhc3BlY3RSYXRpbzogXCIxOjEgKGZpam8pXCIsXHJcbiAgICBhc3BlY3RSYXRpb0Rlc2NyaXB0aW9uOiBcIlNxdWFyZSBmb3JtYXQgLSBmb3JtYXRvIGN1YWRyYWRvIGZpam8gcGFyYSB0b2RhcyBsYXMgaW3DoWdlbmVzXCIsXHJcbiAgICB1c2FnZToge1xyXG4gICAgICBtZXRob2Q6IFwiUE9TVFwiLFxyXG4gICAgICBib2R5OiB7XHJcbiAgICAgICAgcHJvbXB0OiBcInN0cmluZyAocmVxdWVyaWRvKVwiXHJcbiAgICAgIH0sXHJcbiAgICAgIGV4YW1wbGU6IHtcclxuICAgICAgICBwcm9tcHQ6IFwiaG9tYnJlIGVuIGNhYmHDsWFcIlxyXG4gICAgICB9XHJcbiAgICB9XHJcbiAgfSk7XHJcbn0iXSwibmFtZXMiOlsiR29vZ2xlR2VuQUkiLCJOZXh0UmVzcG9uc2UiLCJQT1NUIiwicmVxdWVzdCIsInByb2Nlc3MiLCJlbnYiLCJHRU1JTklfQVBJX0tFWSIsImpzb24iLCJlcnJvciIsInN0YXR1cyIsInByb21wdCIsInRyaW0iLCJmaXhlZEFzcGVjdFJhdGlvIiwiYXNwZWN0UmF0aW9EZXNjcmlwdGlvbiIsImNvbnNvbGUiLCJsb2ciLCJtYWluIiwiaW5mbyIsImFpIiwiYXBpS2V5IiwiY29uZmlnIiwicmVzcG9uc2VNb2RhbGl0aWVzIiwicmVzcG9uc2VNaW1lVHlwZSIsIm1vZGVsIiwiY29udGVudHMiLCJyb2xlIiwicGFydHMiLCJ0ZXh0IiwicmVzcG9uc2UiLCJtb2RlbHMiLCJnZW5lcmF0ZUNvbnRlbnRTdHJlYW0iLCJjaHVuayIsImNhbmRpZGF0ZXMiLCJjb250ZW50IiwiaW5saW5lRGF0YSIsIkVycm9yIiwicmVzdWx0X2ltZyIsImltYWdlQmFzZTY0IiwiZGF0YSIsIm1pbWVUeXBlIiwic3VjY2VzcyIsImFzcGVjdFJhdGlvIiwiZXJyb3JNZXNzYWdlIiwic3RhdHVzQ29kZSIsIm1lc3NhZ2UiLCJpbmNsdWRlcyIsImRldGFpbHMiLCJzdGFjayIsInVuZGVmaW5lZCIsInN1Z2dlc3Rpb24iLCJHRVQiLCJ1c2FnZSIsIm1ldGhvZCIsImJvZHkiLCJleGFtcGxlIl0sImlnbm9yZUxpc3QiOltdLCJzb3VyY2VSb290IjoiIn0=\n//# sourceURL=webpack-internal:///(rsc)/./app/api/generate/route.js\n");
 
 /***/ }),
 
@@ -87,6 +87,146 @@ module.exports = require("next/dist/server/app-render/work-unit-async-storage.ex
 
 /***/ }),
 
+/***/ "?32c4":
+/*!****************************!*\
+  !*** bufferutil (ignored) ***!
+  \****************************/
+/***/ (() => {
+
+/* (ignored) */
+
+/***/ }),
+
+/***/ "?66e9":
+/*!********************************!*\
+  !*** utf-8-validate (ignored) ***!
+  \********************************/
+/***/ (() => {
+
+/* (ignored) */
+
+/***/ }),
+
+/***/ "?d272":
+/*!********************************!*\
+  !*** supports-color (ignored) ***!
+  \********************************/
+/***/ (() => {
+
+/* (ignored) */
+
+/***/ }),
+
+/***/ "assert":
+/*!*************************!*\
+  !*** external "assert" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("assert");
+
+/***/ }),
+
+/***/ "buffer":
+/*!*************************!*\
+  !*** external "buffer" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("buffer");
+
+/***/ }),
+
+/***/ "child_process":
+/*!********************************!*\
+  !*** external "child_process" ***!
+  \********************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("child_process");
+
+/***/ }),
+
+/***/ "crypto":
+/*!*************************!*\
+  !*** external "crypto" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("crypto");
+
+/***/ }),
+
+/***/ "events":
+/*!*************************!*\
+  !*** external "events" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("events");
+
+/***/ }),
+
+/***/ "fs":
+/*!*********************!*\
+  !*** external "fs" ***!
+  \*********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs");
+
+/***/ }),
+
+/***/ "fs/promises":
+/*!******************************!*\
+  !*** external "fs/promises" ***!
+  \******************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs/promises");
+
+/***/ }),
+
+/***/ "http":
+/*!***********************!*\
+  !*** external "http" ***!
+  \***********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("http");
+
+/***/ }),
+
+/***/ "https":
+/*!************************!*\
+  !*** external "https" ***!
+  \************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("https");
+
+/***/ }),
+
+/***/ "net":
+/*!**********************!*\
+  !*** external "net" ***!
+  \**********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("net");
+
+/***/ }),
+
 /***/ "next/dist/compiled/next-server/app-page.runtime.dev.js":
 /*!*************************************************************************!*\
   !*** external "next/dist/compiled/next-server/app-page.runtime.dev.js" ***!
@@ -129,6 +269,160 @@ module.exports = require("next/dist/shared/lib/no-fallback-error.external");
 "use strict";
 module.exports = require("next/dist/shared/lib/router/utils/app-paths");
 
+/***/ }),
+
+/***/ "node:events":
+/*!******************************!*\
+  !*** external "node:events" ***!
+  \******************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:events");
+
+/***/ }),
+
+/***/ "node:process":
+/*!*******************************!*\
+  !*** external "node:process" ***!
+  \*******************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:process");
+
+/***/ }),
+
+/***/ "node:stream":
+/*!******************************!*\
+  !*** external "node:stream" ***!
+  \******************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:stream");
+
+/***/ }),
+
+/***/ "node:util":
+/*!****************************!*\
+  !*** external "node:util" ***!
+  \****************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:util");
+
+/***/ }),
+
+/***/ "os":
+/*!*********************!*\
+  !*** external "os" ***!
+  \*********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("os");
+
+/***/ }),
+
+/***/ "path":
+/*!***********************!*\
+  !*** external "path" ***!
+  \***********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("path");
+
+/***/ }),
+
+/***/ "punycode":
+/*!***************************!*\
+  !*** external "punycode" ***!
+  \***************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("punycode");
+
+/***/ }),
+
+/***/ "querystring":
+/*!******************************!*\
+  !*** external "querystring" ***!
+  \******************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("querystring");
+
+/***/ }),
+
+/***/ "stream":
+/*!*************************!*\
+  !*** external "stream" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("stream");
+
+/***/ }),
+
+/***/ "tls":
+/*!**********************!*\
+  !*** external "tls" ***!
+  \**********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("tls");
+
+/***/ }),
+
+/***/ "tty":
+/*!**********************!*\
+  !*** external "tty" ***!
+  \**********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("tty");
+
+/***/ }),
+
+/***/ "url":
+/*!**********************!*\
+  !*** external "url" ***!
+  \**********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("url");
+
+/***/ }),
+
+/***/ "util":
+/*!***********************!*\
+  !*** external "util" ***!
+  \***********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("util");
+
+/***/ }),
+
+/***/ "zlib":
+/*!***********************!*\
+  !*** external "zlib" ***!
+  \***********************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("zlib");
+
 /***/ })
 
 };
@@ -138,7 +432,7 @@ module.exports = require("next/dist/shared/lib/router/utils/app-paths");
 var __webpack_require__ = require("../../../webpack-runtime.js");
 __webpack_require__.C(exports);
 var __webpack_exec__ = (moduleId) => (__webpack_require__(__webpack_require__.s = moduleId))
-var __webpack_exports__ = __webpack_require__.X(0, ["vendor-chunks/next"], () => (__webpack_exec__("(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fgenerate%2Froute&page=%2Fapi%2Fgenerate%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fgenerate%2Froute.js&appDir=C%3A%5CUsers%5CPc%5CDocuments%5CGitHub%5Capp07-25_3%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CPc%5CDocuments%5CGitHub%5Capp07-25_3&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!")));
+var __webpack_exports__ = __webpack_require__.X(0, ["vendor-chunks/next","vendor-chunks/google-auth-library","vendor-chunks/gaxios","vendor-chunks/ws","vendor-chunks/node-fetch","vendor-chunks/jws","vendor-chunks/debug","vendor-chunks/json-bigint","vendor-chunks/google-logging-utils","vendor-chunks/https-proxy-agent","vendor-chunks/ecdsa-sig-formatter","vendor-chunks/agent-base","vendor-chunks/@google","vendor-chunks/safe-buffer","vendor-chunks/ms","vendor-chunks/jwa","vendor-chunks/is-stream","vendor-chunks/gtoken","vendor-chunks/extend","vendor-chunks/buffer-equal-constant-time","vendor-chunks/bignumber.js","vendor-chunks/base64-js"], () => (__webpack_exec__("(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fgenerate%2Froute&page=%2Fapi%2Fgenerate%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fgenerate%2Froute.js&appDir=C%3A%5CUsers%5CPc%5CDocuments%5CGitHub%5Capp07-25_3%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CPc%5CDocuments%5CGitHub%5Capp07-25_3&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!")));
 module.exports = __webpack_exports__;
 
 })();
